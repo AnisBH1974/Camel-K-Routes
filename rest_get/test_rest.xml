@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- camel-k: language=xml -->
+
+<camel xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xmlns="http://camel.apache.org/schema/spring"
+        xsi:schemaLocation="http://camel.apache.org/schema/spring
+            https://camel.apache.org/schema/spring/camel-spring.xsd">
+
+          <rest path="/api" description="Todo Rest svc" produces="application/json" >
+            <get description="Say hello"  path="/hello" >
+                <responseMessage message="OK" code="200" />
+                <to uri="direct:logmsg_1" />
+            </get>
+
+            <get description="Say goodbye"  path="/gb" >
+                <responseMessage message="OK" code="200" />
+                <to uri="direct:logmsg_2" />
+            </get>
+        </rest>
+
+        <route id="1">
+            <from id="log1" uri="direct:logmsg_1" />
+            <setBody>
+                <simple>{'message':'Hello, World!'}</simple>
+            </setBody>
+        </route>
+
+        <route id="2">
+            <from id="log2" uri="direct:logmsg_2" />
+            <setBody>
+                <simple>{'message':'Goodbye, World!'}</simple>
+            </setBody>
+        </route>
+
+
+</camel>

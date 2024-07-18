@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- camel-k: language=xml -->
+
+
+<camel xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xmlns="http://camel.apache.org/schema/spring"
+        xsi:schemaLocation="
+            http://camel.apache.org/schema/spring
+            https://camel.apache.org/schema/spring/camel-spring.xsd">
+
+            <beans xmlns="http://www.springframework.org/schema/beans" xmlns:util="http://www.springframework.org/schema/util">
+                <!-- Configuration du pool de connexions HikariCP -->
+                <bean id="dataSource" class="com.zaxxer.hikari.HikariDataSource" >
+                        <property name="jdbcUrl" value="jdbc:h2:mem:test;INIT=create schema if not exists test\;runscript from '/Users/anisbenhamida/DEVS/2024/Camel_Routes/Camel_Files/sql/schema-all.sql'"/>
+                        <property name="username" value="sa"/>
+                        <property name="password" value=""/>
+                        <property name="driverClassName" value="org.h2.Driver"/>
+                        <property name="maximumPoolSize" value="10"/>
+                </bean>
+                    
+                <!-- Configuration du composant JDBC de Camel -->
+                <bean id="jdbcComponent" class="org.apache.camel.component.jdbc.JdbcComponent">
+                    <property name="dataSource" ref="dataSource"/>
+                </bean>
+            </beans>
+            
+<!--
+    <route>
+        <from uri="file:///Users/anisbenhamida/DEVS/2024/Camel_Routes/Camel_Files/csvfiles?delay=1000" />
+        <unmarshal><csv /></unmarshal>
+        <log message="${body}"/>
+
+        <setBody>
+            <simple>INSERT INTO people (first_name, last_name) VALUES ('Alice', 'TOTO');</simple>
+        </setBody>
+        <to uri="jdbc:dataSource"/>
+        <log message="Inserted data into my_table"/>
+    </route> -->
+ 
+    <route>
+        <from uri="timer:select?period=15000"/>
+     
+        <setBody>
+            <simple>INSERT INTO PEOPLE (first_name, last_name) VALUES ('Alice', 'TOTO');</simple>
+        </setBody>
+        <to uri="jdbc:dataSource"/>   
+
+        <setBody>
+            <simple>SELECT * FROM PEOPLE;</simple>
+        </setBody> 
+
+        <to uri="jdbc:dataSource"/> 
+        <log message="Selected data: ${body}"/>
+    </route> 
+
+
+</camel>    

@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- camel-k: language=xml -->
+
+<camel xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xmlns="http://camel.apache.org/schema/spring"
+        xsi:schemaLocation="
+            http://camel.apache.org/schema/spring
+            https://camel.apache.org/schema/spring/camel-spring.xsd">
+
+	<!-- Write your routes here, for example: -->
+    <route id="toto">
+        <from uri="timer:xml?period={{time:1000}}"/>
+        <setBody>
+            <simple>Hello new messages from ${routeId} !!!</simple>
+        </setBody>
+        <log message="${body}"/>
+ 
+        <!-- <to id="to-3366" uri="kafka:topic1?brokers=localhost:9092" />  -->
+    </route>
+
+    <route id="toto 2">
+        <from uri="timer:xml?period={{time:1000}}"/>
+        <setBody>
+            <simple>Hello new messages from ${routeId} !!!</simple>
+        </setBody>
+        <log message="${body}"/>
+        <to id="to-3366" uri="kafka:topic1?brokers=localhost:9092" />  
+    </route>
+
+
+</camel>

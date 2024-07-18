@@ -1,0 +1,105 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- camel-k: language=xml -->
+
+
+
+<camel xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xmlns="http://camel.apache.org/schema/spring"
+        xsi:schemaLocation="
+            http://camel.apache.org/schema/spring
+            https://camel.apache.org/schema/spring/camel-spring.xsd">
+
+	
+    <route id="weather_route">
+
+    <!--  TEST à partir d'un fichier json
+        <from uri="file:read_json_file?fileName=result_Paris.json&amp;noop=true" />
+        <convertBodyTo type="String"/> 
+    -->
+        <from uri="timer://foo?fixedRate=true&amp;period=60000"/>
+        <split delimiter=";">
+            <simple>{{locations}}</simple>
+            <toD uri="weather://zeweazer?appid=XXXXXXXXXXX&amp;
+                    units=METRIC&amp;
+                    location=${body}" /> 
+
+            <!-- <log message="Body: ${body}"/>  --> 
+
+            <!-- Alternativement utiliser un script groovy
+               <script>
+                 <groovy>resource:file:./payload.groovy</groovy>
+            </script>  
+            -->
+
+             <setBody>
+                <simple>
+                    {
+                        "country": {
+                            "countryName": "France"
+                        },
+                        "city": {
+                            "id": "Id_${jq(.name)}",
+                            "name": "${jq(.name)}",
+                            "temperature": "${jq(.main.temp)}",
+                            "temp_min": "${jq(.main.temp_min)}",
+                            "temp_max": "${jq(.main.temp_max)}",
+                            "color": "white",
+                            "iconUrl": "http://openweathermap.org/img/w/${jq(.weather[0].icon)}.png"
+                        }
+                    }
+                </simple>
+            </setBody>
+            
+            <setHeader name="CamelHttpMethod"><constant>POST</constant></setHeader>
+            <setHeader name="Content-Type"><constant>application/json; charset=utf-8</constant></setHeader>
+        
+            <to uri="http://localhost:8080/upd" /> 
+        
+        </split>
+
+    </route> 
+ 
+    <route id="news_route" >
+         <!--  <from uri="file:read_json_file?fileName=FR_news.json&amp;noop=true" /> -->
+         
+        <from uri="timer://foo?fixedRate=true&amp;period=30000"/>
+        
+        <setHeader name="CamelHttpMethod"><constant>POST</constant></setHeader>
+        <to uri="http://localhost:8080/clrNews" />
+
+        <setHeader name="CamelHttpMethod"><constant>GET</constant></setHeader>
+        <setHeader name="Content-Type"><constant>application/json; charset=utf-8</constant></setHeader>
+        <to uri="https://newsapi.org/v2/top-headlines?country=fr&amp;category=business&amp;apiKey=YYYYYYYYYYYYY" />
+        
+        <log message="Body: ${body}"/>  
+        
+       
+        <split>
+            <simple>${jq(.articles)}</simple>
+            <setBody>
+                <simple>
+                    {
+                    "news": {
+                        "title": "${jq(.author)}",
+                        "content": "${jq(.title)}",
+                        "url": "${jq(.url)}",
+                        "ts": "${jq(.publishedAt)}",
+                        "img_url": "${jq(.urlToImage)}"
+                      }
+                    }
+                </simple>
+            </setBody>
+
+            <setHeader name="CamelHttpMethod"><constant>POST</constant></setHeader>
+            <setHeader name="Content-Type"><constant>application/json; charset=utf-8</constant></setHeader>
+        
+            <to uri="http://localhost:8080/updNews" />
+            <delay>
+                <constant>15000</constant>
+            </delay>
+        </split>
+        
+
+    </route> 
+
+</camel>

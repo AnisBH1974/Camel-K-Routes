@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xmlns:camel="http://camel.apache.org/schema/spring"
+       xsi:schemaLocation="
+       http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd
+       http://camel.apache.org/schema/spring http://camel.apache.org/schema/spring/camel-spring.xsd">
+
+    <!-- Define the HSQLDB DataSource -->
+    <bean id="dataSource" class="com.zaxxer.hikari.HikariDataSource">
+        <property name="jdbcUrl" value="jdbc:hsqldb:mem:mydb"/>
+        <property name="username" value="sa"/>
+        <property name="password" value=""/>
+        <property name="driverClassName" value="org.hsqldb.jdbc.JDBCDriver"/>
+        <property name="maximumPoolSize" value="10"/>
+        <property name="minimumIdle" value="5"/>
+        <property name="idleTimeout" value="30000"/>
+        <property name="connectionTimeout" value="30000"/>
+    </bean>
+
+    <!-- Define the Camel SQL component -->
+    <bean id="jdbcComponent" class="org.apache.camel.component.jdbc.JdbcComponent">
+        <property name="dataSource" ref="dataSource"/>
+    </bean>
+
+    <!-- Define your Camel context -->
+    <camelContext xmlns="http://camel.apache.org/schema/spring">
+        <!-- Route to initialize the database -->
+        <route id="initDatabaseRoute">
+            <from uri="timer://startup?repeatCount=1"/>
+            <setBody>
+                <simple>CREATE TABLE IF NOT EXISTS PEOPLE (
+                            id INTEGER IDENTITY PRIMARY KEY,
+                            first_name VARCHAR(100), 
+                            last_name VARCHAR(100)
+                        );</simple>
+            </setBody>
+            <to uri="jdbc:dataSource"/>
+            <log message="Database initialized successfully"/>
+        </route>
+
+        <route id="readFile">
+            <from uri="file:///Users/anisbenhamida/DEVS/2024/github/Camel-K-Routes/hsqldb/csv?noop=true" />
+            <split>
+                 <camel:tokenize token="\n" />
+                 <camel:setBody>
+                    <groovy>
+                        List fields = (request.body).split(',')
+                        String e = "INSERT into PEOPLE ( first_name, last_name ) VALUES ('" + fields[0] + "', '" + fields[1] + "' );"
+                        return e
+                    </groovy>
+                </camel:setBody>
+                <log message="Body ${body}"/>
+                <to uri="jdbc:dataSource"/>
+            </split>
+            <log message="Finished INSERTS"/>
+        </route> 
+
+        <camel:route id="dataCheck" delayer="1000">
+            <from uri="timer://datachk?repeatCount=1"/>
+            <setBody>
+                <simple>SELECT * FROM PEOPLE;</simple>
+            </setBody>
+            <to uri="jdbc:dataSource"/>
+            <log message="SELECT * FROM PEOPLE: ${body}"/>
+        </camel:route>
+
+    </camelContext>
+
+</beans>
