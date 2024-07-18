@@ -1,29 +1,29 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!-- camel-k: language=xml -->
 
+<beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xmlns:camel="http://camel.apache.org/schema/spring"
+       xsi:schemaLocation="
+       http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd
+       http://camel.apache.org/schema/spring http://camel.apache.org/schema/spring/camel-spring.xsd">
 
-<camel xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-        xmlns="http://camel.apache.org/schema/spring"
-        xsi:schemaLocation="
-            http://camel.apache.org/schema/spring
-            https://camel.apache.org/schema/spring/camel-spring.xsd">
+    <!-- Configuration du pool de connexions HikariCP -->
+    <bean id="dataSource" class="com.zaxxer.hikari.HikariDataSource" >
+            <property name="jdbcUrl" value="jdbc:h2:mem:test;INIT=runscript from '/Users/anisbenhamida/DEVS/2024/github/Camel-K-Routes/h2_db/sql/schema-all.sql'"/>
+            <property name="username" value="sa"/>
+            <property name="password" value=""/>
+            <property name="driverClassName" value="org.h2.Driver"/>
+            <property name="maximumPoolSize" value="10"/>
+    </bean>
+        
+    <!-- Configuration du composant JDBC de Camel -->
+    <bean id="jdbcComponent" class="org.apache.camel.component.jdbc.JdbcComponent">
+        <property name="dataSource" ref="dataSource"/>
+    </bean>
 
-            <beans xmlns="http://www.springframework.org/schema/beans" xmlns:util="http://www.springframework.org/schema/util">
-                <!-- Configuration du pool de connexions HikariCP -->
-                <bean id="dataSource" class="com.zaxxer.hikari.HikariDataSource" >
-                        <property name="jdbcUrl" value="jdbc:h2:mem:test;INIT=create schema if not exists test\;runscript from '/Users/anisbenhamida/DEVS/2024/Camel_Routes/Camel_Files/sql/schema-all.sql'"/>
-                        <property name="username" value="sa"/>
-                        <property name="password" value=""/>
-                        <property name="driverClassName" value="org.h2.Driver"/>
-                        <property name="maximumPoolSize" value="10"/>
-                </bean>
-                    
-                <!-- Configuration du composant JDBC de Camel -->
-                <bean id="jdbcComponent" class="org.apache.camel.component.jdbc.JdbcComponent">
-                    <property name="dataSource" ref="dataSource"/>
-                </bean>
-            </beans>
-            
+    <camelContext xmlns="http://camel.apache.org/schema/spring">
+
 <!--
     <route>
         <from uri="file:///Users/anisbenhamida/DEVS/2024/Camel_Routes/Camel_Files/csvfiles?delay=1000" />
@@ -38,20 +38,23 @@
     </route> -->
  
     <route>
-        <from uri="timer:select?period=15000"/>
-     
-        <setBody>
-            <simple>INSERT INTO PEOPLE (first_name, last_name) VALUES ('Alice', 'TOTO');</simple>
-        </setBody>
-        <to uri="jdbc:dataSource"/>   
+        <from uri="file:///Users/anisbenhamida/DEVS/2024/github/Camel-K-Routes/h2_db/csvfiles?noop=true" />
+        <split>
+            <tokenize token="\n" />
+            <setBody>
+               <groovy>
+                   List fields = (request.body).split(',')
+                   String e = "INSERT INTO PEOPLE ( first_name, last_name ) VALUES ('" + fields[0] + "', '" + fields[1] + "' );"
+                   return e
+               </groovy>
+           </setBody>
+           <to uri="sql:ins?useMessageBodyForSql=true&amp;dataSource=#dataSource" />
+       </split>
 
-        <setBody>
-            <simple>SELECT * FROM PEOPLE;</simple>
-        </setBody> 
-
-        <to uri="jdbc:dataSource"/> 
-        <log message="Selected data: ${body}"/>
+       <to uri="sql:select count(1) from people?dataSource=#dataSource" />
+       <log message="SELECT * FROM PEOPLE: ${body}"/>
+       
     </route> 
 
-
-</camel>    
+    </camelContext>    
+</beans>
