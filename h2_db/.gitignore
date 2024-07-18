@@ -1,5 +1,7 @@
 .DS_Store
 
+.camel-jbang/
+
 # Compiled class file
 *.class
 
