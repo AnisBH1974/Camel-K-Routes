@@ -1,0 +1,84 @@
+<beans xmlns="http://www.springframework.org/schema/beans"
+   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+   xmlns:spring-security="http://www.springframework.org/schema/security"
+   xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd
+    http://camel.apache.org/schema/spring http://camel.apache.org/schema/spring/camel-spring.xsd
+    http://camel.apache.org/schema/spring-security http://camel.apache.org/schema/spring-security/camel-spring-security.xsd
+    http://www.springframework.org/schema/security http://www.springframework.org/schema/security/spring-security.xsd">
+
+    <!-- import the Spring security configuration  
+   <import resource= "file:///Users/anisbenhamida/DEVS/2024/github/Camel-K-Routes/rest_get_sec/SpringSecurity/commonSecurity.xml"/> 
+-->
+ 
+
+    <bean id="shiroSecurityPolicy" class="org.apache.camel.component.shiro.security.ShiroSecurityPolicy" >
+        <constructor-arg><value>./shiro.ini</value></constructor-arg>
+        <constructor-arg>
+                <list>
+                    <value type="byte">0x08</value><value type="byte" >0x09</value><value type="byte">0x0A</value><value type="byte">0x0B</value>
+                    <value type="byte">0x08</value><value type="byte" >0x09</value><value type="byte">0x0A</value><value type="byte">0x0B</value>
+                    <value type="byte">0x08</value><value type="byte" >0x09</value><value type="byte">0x0A</value><value type="byte">0x0B</value>
+                    <value type="byte">0x08</value><value type="byte" >0x09</value><value type="byte">0x0A</value><value type="byte">0x0B</value>
+                </list>
+        </constructor-arg>
+    </bean>
+
+
+    <camelContext id="myCamelContext" xmlns="http://camel.apache.org/schema/spring">
+      
+
+
+        <rest path="/api" description="Todo Rest svc" produces="application/json" >
+          <get description="Say hello"  path="/hello" >
+              <responseMessage message="OK" code="200" />
+              <to uri="direct:hello" />
+          </get>
+
+          <get description="Say goodbye"  path="/gb" >
+              <responseMessage message="OK" code="200" />
+              <to uri="direct:logmsg_2" />
+          </get>
+       </rest>
+      
+
+      <route>
+        <from uri="direct:hello"/>
+
+            <onException>
+                <exception>org.apache.shiro.authc.IncorrectCredentialsException</exception>
+                <!-- we can set the redelivery policy here as well -->
+                <redeliveryPolicy maximumRedeliveries="1" />
+                <!-- mark this as handled -->
+                <handled><constant>true</constant></handled>
+                <!-- let our order service handle this exception, call the orderFailed method -->
+                <log message="Invalid Credentials !" />
+                <!-- and since this is a unit test we use mock for assertions -->
+                <to uri="mock:error" />
+        </onException>
+
+            <script>
+                <groovy>
+                    import java.util.Base64;
+                    import org.apache.camel.component.shiro.security.ShiroSecurityToken
+
+                    encoded = exchange.getIn().getHeader("Authorization").split(" ")[1]
+                    String decodedStr = new String(Base64.getDecoder().decode(encoded));
+                   
+                    ShiroSecurityToken shiroSecurityToken = new ShiroSecurityToken(decodedStr.split(":")[0], decodedStr.split(":")[1]);
+                    exchange.getIn().setHeader("SHIRO_SECURITY_TOKEN", shiroSecurityToken )
+                </groovy>
+            </script>
+            <policy ref="shiroSecurityPolicy">
+              <setBody>
+                <simple>{'message':'Hello, World!'}</simple>
+              </setBody>
+            </policy>
+        <to uri="mock:end"/>
+    </route>
+      
+    
+    </camelContext>
+
+
+
+</beans>
